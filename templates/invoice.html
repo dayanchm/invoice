@@ -26,6 +26,7 @@
     .seller-contact { color: #555; }
     .right { text-align: right; }
     .number { margin-top: 2mm; color: #555; font-size: 10pt; }
+    .paid { margin-top: 2mm; color: #287545; font-weight: 700; }
     .balance-heading { margin-top: 7mm; font-size: 9pt; font-weight: 700; }
     .balance-amount { margin-top: 1mm; font-size: 16pt; font-weight: 700; font-variant-numeric: tabular-nums; }
     .billing { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; align-items: end; margin: 13mm 0 9mm; }
@@ -85,13 +86,15 @@
         {{if .Seller.VAT}}<p>VAT: {{.Seller.VAT}}</p>{{end}}
         {{if .Seller.Phone}}<p>{{.Seller.Phone}}</p>{{end}}
         {{if .Seller.Email}}<p>{{.Seller.Email}}</p>{{end}}
+        {{if .Seller.Website}}<p>{{.Seller.Website}}</p>{{end}}
       </div>
     </div>
     <div class="right">
       <h1>INVOICE</h1>
       <p class="number"># {{.Number}}</p>
+      {{if .Paid}}<p class="paid">PAID</p>{{end}}
       <p class="balance-heading">Balance Due</p>
-      <p class="balance-amount">{{money .TotalCents}} {{.Currency}}</p>
+      <p class="balance-amount">{{money .BalanceDueCents}} {{.Currency}}</p>
     </div>
   </header>
 
@@ -136,7 +139,8 @@
     <p><span>Sub Total</span><span>{{money .SubtotalCents}} {{.Currency}}</span></p>
     {{if .TaxBasisPoints}}<p><span>Tax ({{money .TaxBasisPoints}}%)</span><span>{{money .TaxCents}} {{.Currency}}</span></p>{{end}}
     <p class="total"><span>Total</span><span>{{money .TotalCents}} {{.Currency}}</span></p>
-    <p class="balance-due"><span>Balance Due</span><span>{{money .TotalCents}} {{.Currency}}</span></p>
+    {{if .Paid}}<p><span>Amount Paid</span><span>{{money .TotalCents}} {{.Currency}}</span></p>{{end}}
+    <p class="balance-due"><span>Balance Due</span><span>{{money .BalanceDueCents}} {{.Currency}}</span></p>
   </section>
 
   <div class="closing">

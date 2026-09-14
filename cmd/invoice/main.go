@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -34,6 +33,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	outputDir := flags.String("out", "invoices", "invoice archive directory")
 	dateValue := flags.String("date", time.Now().Format(time.DateOnly), "issue date (YYYY-MM-DD)")
 	period := flags.String("period", "", "service month (YYYY-MM); defaults to the issue month")
+	from := flags.String("from", "", "first service month (YYYY-MM, inclusive); requires -to")
+	to := flags.String("to", "", "last service month (YYYY-MM, inclusive); requires -from")
+	paid := flags.Bool("paid", false, "mark each invoice as paid in full")
 	chromePath := flags.String("chrome", os.Getenv("CHROME_BIN"), "Chrome/Chromium executable")
 	if err := flags.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -48,16 +50,22 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("invalid -date; use YYYY-MM-DD: %w", err)
 	}
-	if *period == "" {
-		*period = date.Format("2006-01")
+	periods, err := servicePeriods(date, *period, *from, *to)
+	if err != nil {
+		return err
 	}
 	config, err := invoice.LoadConfig(*configPath)
 	if err != nil {
 		return err
 	}
-	inv, err := invoice.New(config, date, *period)
-	if err != nil {
-		return err
+	drafts := make([]invoice.Invoice, 0, len(periods))
+	for _, month := range periods {
+		inv, err := invoice.New(config, date, month)
+		if err != nil {
+			return err
+		}
+		inv.Paid = *paid
+		drafts = append(drafts, inv)
 	}
 	tmpl, err := invoice.LoadTemplate(*templatePath)
 	if err != nil {
@@ -67,15 +75,20 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	archive, err := invoice.Reserve(*outputDir, date.Year())
-	if err != nil {
-		return err
+	for _, inv := range drafts {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		archive, err := invoice.Reserve(*outputDir, date.Year())
+		if err != nil {
+			return err
+		}
+		inv.Number = archive.Number
+		if err := generate(ctx, archive, inv, tmpl, chrome); err != nil {
+			return fmt.Errorf("service month %s: %s remains reserved at %s; the next run will use a new number: %w", inv.Period, inv.Number, archive.Dir, err)
+		}
+		fmt.Fprintln(stdout, filepath.Join(archive.Dir, "invoice.pdf"))
 	}
-	inv.Number = archive.Number
-	if err := generate(ctx, archive, inv, tmpl, chrome); err != nil {
-		return fmt.Errorf("%s remains reserved at %s; the next run will use a new number: %w", inv.Number, archive.Dir, err)
-	}
-	fmt.Fprintln(stdout, filepath.Join(archive.Dir, "invoice.pdf"))
 	return nil
 }
 
@@ -84,13 +97,13 @@ func generate(ctx context.Context, archive invoice.Archive, inv invoice.Invoice,
 	if err != nil {
 		return err
 	}
-	snapshot, err := json.MarshalIndent(inv, "", "  ")
+	/* snapshot, err := json.MarshalIndent(inv, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode invoice snapshot: %w", err)
 	}
 	if err := archive.Write("invoice.json", append(snapshot, '\n')); err != nil {
 		return err
-	}
+	} */
 	if err := archive.Write("invoice.html", html); err != nil {
 		return err
 	}

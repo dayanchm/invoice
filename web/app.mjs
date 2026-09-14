@@ -1,4 +1,4 @@
-import { calculate, money, parseDate, monthEnd, dueDate, prettyDate, nextNumber, escapeHTML as esc } from './invoice.mjs';
+import { calculate, money, parseDate, monthEnd, dueDate, monthRange, incrementNumber, prettyDate, nextNumber, escapeHTML as esc } from './invoice.mjs';
 
 const form = document.querySelector('#editor');
 const paper = document.querySelector('#invoice');
@@ -7,8 +7,9 @@ const printButton = document.querySelector('#print');
 const status = document.querySelector('#status');
 const DRAFT_KEY = 'invoice:draft:v1';
 const NUMBERS_KEY = 'invoice:numbers:v1';
-const fieldNames = ['number', 'period', 'issueDate', 'terms', 'dueDate', 'sellerName', 'sellerAddress', 'sellerEmail', 'sellerPhone', 'sellerVAT', 'customerName', 'customerAddress', 'customerEmail', 'customerPhone', 'customerVAT', 'currency', 'tax', 'paymentDetails', 'notes'];
+const fieldNames = ['number', 'period', 'periodEnd', 'issueDate', 'terms', 'dueDate', 'sellerName', 'sellerAddress', 'sellerEmail', 'sellerPhone', 'sellerVAT', 'customerName', 'customerAddress', 'customerEmail', 'customerPhone', 'customerVAT', 'currency', 'tax', 'paymentDetails', 'notes'];
 const field = name => form.elements.namedItem(name);
+let preparedPages = null;
 const now = new Date();
 const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -40,6 +41,7 @@ function addItem(item = { description: '', quantity: '1', price: '' }) {
   row.querySelector('button').addEventListener('click', () => {
     if (itemList.children.length === 1) return message('Keep at least one item on the invoice.', true);
     row.remove();
+    preparedPages = null;
     numberItems();
     render();
   });
@@ -56,6 +58,7 @@ function numberItems() {
 
 function readForm() {
   const data = Object.fromEntries(fieldNames.map(name => [name, field(name).value.trim()]));
+  data.paid = field('paid').checked;
   data.items = [...itemList.children].map(row => Object.fromEntries([...row.querySelectorAll('[data-field]')].map(input => [input.dataset.field, input.value.trim()])));
   return data;
 }
@@ -66,6 +69,7 @@ function applyData(data) {
     const input = field(name);
     input.value = typeof data[name] === 'string' ? data[name].slice(0, input.maxLength > 0 ? input.maxLength : 2000) : '';
   }
+  field('paid').checked = data.paid === true;
   itemList.replaceChildren();
   data.items.forEach(addItem);
   updateDueDate();
@@ -75,7 +79,7 @@ function applyData(data) {
 function updateDueDate() {
   field('dueDate').readOnly = field('terms').value !== 'custom';
   if (!field('dueDate').readOnly) return;
-  try { field('dueDate').value = dueDate(field('issueDate').value, field('terms').value); }
+  try { field('dueDate').value = dueDate(field('issueDate').value, field('terms').value, field('period').value); }
   catch { field('dueDate').value = ''; }
 }
 
@@ -89,14 +93,25 @@ function render() {
   catch { totals = { lines: d.items.map(() => 0n), subtotal: 0n, tax: 0n, total: 0n, rate: 0n }; }
   const amount = value => `${money(value)} ${esc(d.currency)}`;
   const displayDate = value => { try { return prettyDate(value); } catch { return '—'; } };
-  paper.innerHTML = `<header><div><p class="seller-name">${shown(d.sellerName, 'Your name or company')}</p><div class="seller-contact"><p class="multiline">${shown(d.sellerAddress, 'Your address')}</p>${optional(d.sellerVAT, 'VAT: ')}${optional(d.sellerPhone)}${optional(d.sellerEmail)}</div></div>
-    <div class="right"><h1>INVOICE</h1><p class="number"># ${esc(d.number)}</p><p class="balance-heading">Balance Due</p><p class="balance-amount">${amount(totals.total)}</p></div></header>
+  let periods;
+  try { periods = preparedPages ? preparedPages.map(page => page.period) : monthRange(d.period, d.periodEnd); }
+  catch { periods = [d.period]; }
+  paper.innerHTML = periods.map((period, page) => {
+    const prepared = preparedPages?.[page];
+    const number = prepared?.number ?? (() => { try { return incrementNumber(d.number, page); } catch { return d.number; } })();
+    const pageDueDate = prepared?.dueDate ?? (d.terms === 'custom' ? d.dueDate : (() => { try { return dueDate(d.issueDate, d.terms, period); } catch { return ''; } })());
+    const pageTotals = prepared ? { subtotal: BigInt(prepared.subtotalCents), tax: BigInt(prepared.taxCents), total: BigInt(prepared.totalCents), rate: totals.rate } : totals;
+    const paid = prepared?.paid ?? d.paid;
+    const balance = prepared ? BigInt(prepared.balanceDueCents) : (paid ? 0n : totals.total);
+    return `<section class="invoice-page"><header><div><p class="seller-name">${shown(d.sellerName, 'Your name or company')}</p><div class="seller-contact"><p class="multiline">${shown(d.sellerAddress, 'Your address')}</p>${optional(d.sellerVAT, 'VAT: ')}${optional(d.sellerPhone)}${optional(d.sellerEmail)}</div></div>
+    <div class="right"><h1>INVOICE</h1><p class="number"># ${esc(number)}</p>${paid ? '<p class="paid">PAID</p>' : ''}<p class="balance-heading">Balance Due</p><p class="balance-amount">${amount(balance)}</p></div></header>
     <section class="billing"><div><h2>Bill To</h2><p class="customer-name">${shown(d.customerName, 'Client name or company')}</p><p class="multiline">${shown(d.customerAddress, 'Client address')}</p>${optional(d.customerVAT, 'VAT: ')}${optional(d.customerPhone)}${optional(d.customerEmail)}</div>
-    <dl><dt>Invoice Date :</dt><dd>${displayDate(d.issueDate)}</dd><dt>Due Date :</dt><dd>${displayDate(d.dueDate)}</dd><dt>Service Period :</dt><dd>${esc(d.period)}</dd></dl></section>
+    <dl><dt>Invoice Date :</dt><dd>${displayDate(d.issueDate)}</dd><dt>Due Date :</dt><dd>${displayDate(pageDueDate)}</dd><dt>Service Period :</dt><dd>${esc(period)}</dd></dl></section>
     <table><colgroup><col style="width:6%"><col style="width:46%"><col style="width:10%"><col style="width:18%"><col style="width:20%"></colgroup><thead><tr><th scope="col">#</th><th scope="col">Item &amp; Description</th><th scope="col" class="numeric">Qty</th><th scope="col" class="numeric">Rate</th><th scope="col" class="numeric">Amount</th></tr></thead><tbody>
     ${d.items.map((item, index) => `<tr><td>${index + 1}</td><td class="multiline">${shown(item.description, 'Your service or product')}</td><td class="numeric">${esc(item.quantity)}</td><td class="numeric">${item.quantity && /^\d+$/.test(item.quantity) && BigInt(item.quantity) > 0n ? money(totals.lines[index] / BigInt(item.quantity)) : '0.00'}</td><td class="numeric">${money(totals.lines[index])}</td></tr>`).join('')}</tbody></table>
-    <section class="totals"><p><span>Sub Total</span><span>${amount(totals.subtotal)}</span></p>${totals.rate ? `<p><span>Tax (${money(totals.rate)}%)</span><span>${amount(totals.tax)}</span></p>` : ''}<p class="total"><span>Total</span><span>${amount(totals.total)}</span></p><p class="balance-due"><span>Balance Due</span><span>${amount(totals.total)}</span></p></section>
-    <div class="closing"><section class="details"><h2>Notes</h2><p class="multiline">${esc(d.notes || 'Thank you for your business.')}</p></section>${d.paymentDetails ? `<section class="details"><h2>Payment Details</h2><p class="multiline">${esc(d.paymentDetails)}</p></section>` : ''}</div><footer>Payment reference: ${esc(d.number)}</footer>`;
+    <section class="totals"><p><span>Sub Total</span><span>${amount(pageTotals.subtotal)}</span></p>${pageTotals.rate ? `<p><span>Tax (${money(pageTotals.rate)}%)</span><span>${amount(pageTotals.tax)}</span></p>` : ''}<p class="total"><span>Total</span><span>${amount(pageTotals.total)}</span></p>${paid ? `<p><span>Amount Paid</span><span>${amount(pageTotals.total)}</span></p>` : ''}<p class="balance-due"><span>Balance Due</span><span>${amount(balance)}</span></p></section>
+    <div class="closing"><section class="details"><h2>Notes</h2><p class="multiline">${esc(d.notes || 'Thank you for your business.')}</p></section>${d.paymentDetails ? `<section class="details"><h2>Payment Details</h2><p class="multiline">${esc(d.paymentDetails)}</p></section>` : ''}</div><footer>Payment reference: ${esc(number)}</footer></section>`;
+  }).join('');
   resizePreview();
 }
 
@@ -111,18 +126,20 @@ function resizePreview() {
 }
 
 form.addEventListener('input', event => {
-  if (event.target.name === 'issueDate' || event.target.name === 'terms') updateDueDate();
+  preparedPages = null;
+  if (event.target.name === 'issueDate' || event.target.name === 'period' || event.target.name === 'terms') updateDueDate();
   message('');
   render();
 });
 form.addEventListener('change', event => {
+  preparedPages = null;
   if (event.target.name === 'terms') updateDueDate();
   render();
 });
-document.querySelector('#add-item').addEventListener('click', () => { addItem(); render(); });
-document.querySelector('#next-number').addEventListener('click', () => { field('number').value = suggestNumber(); render(); message('The next available invoice number is ready.'); });
+document.querySelector('#add-item').addEventListener('click', () => { preparedPages = null; addItem(); render(); });
+document.querySelector('#next-number').addEventListener('click', () => { preparedPages = null; field('number').value = suggestNumber(); render(); message('The next available invoice number is ready.'); });
 document.querySelector('#month-end').addEventListener('click', () => {
-  try { field('issueDate').value = monthEnd(field('period').value); field('number').value = suggestNumber(); updateDueDate(); render(); }
+  try { preparedPages = null; field('issueDate').value = monthEnd(field('period').value); field('number').value = suggestNumber(); updateDueDate(); render(); }
   catch (error) { message(error.message, true); }
 });
 document.querySelector('#save-draft').addEventListener('click', () => {
@@ -135,7 +152,7 @@ document.querySelector('#clear-draft').addEventListener('click', () => {
 });
 document.querySelector('#example').addEventListener('click', () => {
   if ((field('sellerName').value || field('customerName').value) && !confirm('Replace the current form with example details? Saved drafts will stay on this device.')) return;
-  applyData({ number: suggestNumber(), issueDate: today, period: today.slice(0, 7), terms: 'end_of_month', currency: 'CHF', tax: '0', sellerName: 'Example Studio', sellerAddress: '12 Studio Lane\nLondon, United Kingdom', sellerEmail: 'hello@example.com', customerName: 'Example Client', customerAddress: '24 Example Street\nGenève, Switzerland', customerEmail: 'billing@example.com', items: [{ description: 'Monthly software development services', quantity: '1', price: '1250.00' }], notes: 'Thank you for your business.' });
+  applyData({ number: suggestNumber(), issueDate: today, period: today.slice(0, 7), periodEnd: '', terms: 'end_of_month', paid: false, currency: 'CHF', tax: '0', sellerName: 'Example Studio', sellerAddress: '12 Studio Lane\nLondon, United Kingdom', sellerEmail: 'hello@example.com', customerName: 'Example Client', customerAddress: '24 Example Street\nGenève, Switzerland', customerEmail: 'billing@example.com', items: [{ description: 'Monthly software development services', quantity: '1', price: '1250.00' }], notes: 'Thank you for your business.' });
   message('Example loaded. Replace these details with your own.');
 });
 
@@ -146,27 +163,42 @@ form.addEventListener('submit', async event => {
   printButton.disabled = true;
   try {
     for (const name of ['sellerName', 'sellerAddress', 'customerName', 'customerAddress']) if (!d[name]) throw new Error('Enter both the seller and client names and addresses.');
-    parseDate(d.issueDate); parseDate(d.dueDate); parseDate(`${d.period}-01`);
-    if (d.dueDate < d.issueDate) throw new Error('The due date cannot be earlier than the invoice date.');
+    parseDate(d.issueDate); parseDate(d.dueDate);
+    const periods = monthRange(d.period, d.periodEnd);
+    const numbers = periods.map((_, index) => incrementNumber(d.number, index));
+    if (d.terms !== 'end_of_month' && d.dueDate < d.issueDate) throw new Error('The due date cannot be earlier than the invoice date.');
     if (d.items.some(item => !item.description)) throw new Error('Give each item a description.');
     const totals = calculate(d.items, d.tax);
     if (totals.total <= 0n) throw new Error('The invoice total must be greater than zero.');
+    const apiResponse = await fetch('/api/invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(d),
+    });
+    const payload = await apiResponse.json().catch(() => ({}));
+    if (!apiResponse.ok || !Array.isArray(payload.invoices)) throw new Error(payload.error || 'The Go invoice service could not prepare the invoices.');
+    preparedPages = payload.invoices;
     // Only a fingerprint is stored for printed invoices, never their contents.
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(d)));
-    const fingerprint = [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    const fingerprints = await Promise.all(periods.map(async period => {
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({ ...d, period, periodEnd: '' })));
+      return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }));
     const reserve = () => {
-      const numbers = registry();
-      if (Object.hasOwn(numbers, d.number) && numbers[d.number] !== fingerprint) throw new Error('This invoice number was already used with different details. Click Next to use a new number.');
-      numbers[d.number] = fingerprint;
-      localStorage.setItem(NUMBERS_KEY, JSON.stringify(numbers));
+      const savedNumbers = registry();
+      numbers.forEach((number, index) => {
+        if (Object.hasOwn(savedNumbers, number) && savedNumbers[number] !== fingerprints[index]) throw new Error(`Invoice number ${number} was already used with different details. Click Next to use a new number.`);
+      });
+      numbers.forEach((number, index) => { savedNumbers[number] = fingerprints[index]; });
+      localStorage.setItem(NUMBERS_KEY, JSON.stringify(savedNumbers));
     };
     if (navigator.locks) await navigator.locks.request('invoice-number-reservation', reserve);
     else reserve();
     render();
-    document.title = d.number;
+    document.title = periods.length === 1 ? d.number : `${numbers[0]}_${numbers.at(-1)}`;
     window.print();
-    message('Choose Save as PDF in the print dialog. Keep the downloaded file as your invoice record.');
+    message(`${periods.length} invoice page${periods.length === 1 ? '' : 's'} ready. Choose Save as PDF in the print dialog.`);
   } catch (error) {
+    preparedPages = null;
     message(error instanceof DOMException ? 'Your browser blocked local storage or PDF preparation. Open this site over HTTPS and allow site storage.' : error.message, true);
     status.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   } finally { printButton.disabled = false; }

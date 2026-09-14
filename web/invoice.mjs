@@ -35,13 +35,31 @@ export function monthEnd(period) {
   return date.toISOString().slice(0, 10);
 }
 
-export function dueDate(issue, terms) {
+export function dueDate(issue, terms, period = issue.slice(0, 7)) {
   const date = parseDate(issue);
-  if (terms === 'end_of_month') return monthEnd(issue.slice(0, 7));
+  if (terms === 'end_of_month') return monthEnd(period);
   if (terms === '30_days') date.setUTCDate(date.getUTCDate() + 30);
   const result = date.toISOString().slice(0, 10);
   parseDate(result);
   return result;
+}
+
+export function monthRange(first, last = first) {
+  const start = parseDate(`${first}-01`);
+  const end = parseDate(`${last || first}-01`);
+  if (start > end) throw new Error('The last service month cannot be earlier than the first.');
+  const result = [];
+  for (const month = start; month <= end; month.setUTCMonth(month.getUTCMonth() + 1)) {
+    result.push(month.toISOString().slice(0, 7));
+    if (result.length > 120) throw new Error('A range can contain up to 120 months.');
+  }
+  return result;
+}
+
+export function incrementNumber(number, offset) {
+  const match = /^(.*?)(\d+)$/.exec(number);
+  if (!match) throw new Error('For a range, the invoice number must end with digits.');
+  return match[1] + String(Number(match[2]) + offset).padStart(match[2].length, '0');
 }
 
 export function prettyDate(value) {

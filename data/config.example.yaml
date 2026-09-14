@@ -15,7 +15,7 @@ customer:
   email: "billing@example.com"
 
 currency: CHF
-# Payment is due on the last day of the invoice month.
+# Payment is due on the last day of the service month.
 payment_terms: end_of_month
 # Set your applicable tax rate: 100 basis points = 1%.
 tax_basis_points: 0

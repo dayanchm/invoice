@@ -14,6 +14,7 @@ type Party struct {
 	VAT     string `yaml:"vat" json:"vat,omitempty"`
 	Phone   string `yaml:"phone" json:"phone,omitempty"`
 	Email   string `yaml:"email" json:"email,omitempty"`
+	Website string `yaml:"website"`
 }
 
 // Item uses whole quantities and integer cents; no floating-point arithmetic.
@@ -40,8 +41,17 @@ type Invoice struct {
 	SubtotalCents  int64     `json:"subtotal_cents"`
 	TaxCents       int64     `json:"tax_cents"`
 	TotalCents     int64     `json:"total_cents"`
+	Paid           bool      `json:"paid"`
 	PaymentDetails string    `json:"payment_details,omitempty"`
 	Notes          string    `json:"notes,omitempty"`
+}
+
+// BalanceDueCents returns the outstanding amount after payment in full.
+func (i Invoice) BalanceDueCents() int64 {
+	if i.Paid {
+		return 0
+	}
+	return i.TotalCents
 }
 
 // New validates a draft and calculates its totals. The archive assigns Number.
@@ -49,8 +59,12 @@ func New(c Config, date time.Time, period string) (Invoice, error) {
 	if date.IsZero() || date.Year() < 1 || date.Year() > 9999 {
 		return Invoice{}, fmt.Errorf("invoice date must have a year between 0001 and 9999")
 	}
-	if _, err := time.Parse("2006-01", period); err != nil {
+	serviceMonth, err := time.Parse("2006-01", period)
+	if err != nil {
 		return Invoice{}, fmt.Errorf("period must use YYYY-MM: %w", err)
+	}
+	if serviceMonth.Year() < 1 {
+		return Invoice{}, fmt.Errorf("period must have a year between 0001 and 9999")
 	}
 	for _, p := range []struct {
 		label string
@@ -96,8 +110,8 @@ func New(c Config, date time.Time, period string) (Invoice, error) {
 	date = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 	dueDate := date.AddDate(0, 0, c.PaymentTermsDays)
 	if c.PaymentTerms == "end_of_month" {
-		// Day zero of the following month is the last day of the issue month.
-		dueDate = time.Date(date.Year(), date.Month()+1, 0, 0, 0, 0, 0, time.UTC)
+		// Day zero of the following month is the last day of the service month.
+		dueDate = time.Date(serviceMonth.Year(), serviceMonth.Month()+1, 0, 0, 0, 0, 0, time.UTC)
 	}
 	if dueDate.Year() > 9999 {
 		return Invoice{}, fmt.Errorf("due date exceeds year 9999")

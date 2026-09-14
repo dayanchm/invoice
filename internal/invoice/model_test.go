@@ -37,27 +37,36 @@ func TestNewTotalsAndSnapshot(t *testing.T) {
 }
 
 func TestNewEndOfMonthDueDate(t *testing.T) {
-	for _, tc := range []struct{ issued, due string }{
-		{"2026-09-14", "2026-09-30"},
-		{"2026-01-15", "2026-01-31"},
-		{"2026-02-01", "2026-02-28"},
-		{"2028-02-15", "2028-02-29"},
-		{"2026-12-15", "2026-12-31"},
-		{"2026-09-30", "2026-09-30"},
+	for _, tc := range []struct{ issued, period, due string }{
+		{"2026-09-14", "2026-09", "2026-09-30"},
+		{"2026-01-15", "2026-01", "2026-01-31"},
+		{"2026-02-01", "2026-02", "2026-02-28"},
+		{"2028-02-15", "2028-02", "2028-02-29"},
+		{"2026-12-15", "2026-12", "2026-12-31"},
+		{"2026-09-30", "2026-09", "2026-09-30"},
+		{"2026-09-14", "2025-03", "2025-03-31"},
+		{"2026-09-14", "2026-08", "2026-08-31"},
+		{"2026-09-14", "2024-02", "2024-02-29"},
+		{"2026-09-14", "2025-02", "2025-02-28"},
+		{"2026-01-15", "2025-12", "2025-12-31"},
+		{"2026-09-14", "9999-12", "9999-12-31"},
 	} {
-		t.Run(tc.issued, func(t *testing.T) {
+		t.Run(tc.issued+"/"+tc.period, func(t *testing.T) {
 			c := validConfig()
 			c.PaymentTerms = "end_of_month"
 			date, err := time.Parse(time.DateOnly, tc.issued)
 			if err != nil {
 				t.Fatal(err)
 			}
-			inv, err := New(c, date, date.Format("2006-01"))
+			inv, err := New(c, date, tc.period)
 			if err != nil {
 				t.Fatal(err)
 			}
 			if got := inv.DueDate.Format(time.DateOnly); got != tc.due {
 				t.Fatalf("due date = %s, want %s", got, tc.due)
+			}
+			if !inv.IssueDate.Equal(date) {
+				t.Fatalf("issue date = %s, want %s", inv.IssueDate, date)
 			}
 		})
 	}

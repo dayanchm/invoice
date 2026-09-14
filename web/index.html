@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Create a clean invoice in your browser. Live preview, month-end payment terms, and print-ready PDFs. Your invoice details stay on your device.">
+  <meta name="description" content="Create clean invoices with a Go backend. Live preview, monthly ranges, paid status, and print-ready PDFs.">
   <meta name="referrer" content="no-referrer">
   <title>Invoice — Simple, private invoicing</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
@@ -14,14 +14,14 @@
     <a class="brand" href="./" aria-label="Invoice home"><span class="brand-mark" aria-hidden="true">i.</span>invoice<span class="brand-tag">BROWSER EDITION</span></a>
     <div class="top-actions">
       <button type="button" id="example" class="button secondary">Try an example</button>
-      <button type="submit" form="editor" id="print" class="button primary" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-4-4 4 4 4-4M4 13v4h12v-4"/></svg>Save as PDF</button>
+      <button type="submit" form="editor" id="print" class="button primary" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-4-4 4 4 4-4M4 13v4h12v-4"/></svg>Save PDF</button>
     </div>
   </header>
 
   <main class="workspace">
     <section class="editor-pane app-only" aria-labelledby="editor-heading">
       <div class="intro"><p class="eyebrow">LESS ADMIN. MORE DOING.</p><h1 id="editor-heading">Your next invoice.</h1><p>All the details, beautifully put together.</p></div>
-      <div class="privacy"><span class="privacy-dot"></span>Your invoice details stay in your browser.</div>
+      <div class="privacy"><span class="privacy-dot"></span>The Go service calculates invoices without storing them.</div>
       <noscript><p class="notice error">Enable JavaScript to create an invoice. No details are sent to a server.</p></noscript>
       <form id="editor" autocomplete="off">
         <fieldset>
@@ -29,11 +29,14 @@
           <div class="field-grid">
             <label class="full">Invoice number <span class="input-action"><input name="number" required maxlength="60" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,59}" aria-describedby="number-hint"><button type="button" id="next-number" title="Choose the next invoice number">Next ↗</button></span></label>
             <p id="number-hint" class="hint full">Invoice numbers are remembered on this browser.</p>
-            <label>Service month<input type="month" name="period" min="1900-01" max="9999-12" required></label>
+            <label>First service month<input type="month" name="period" min="1900-01" max="9999-12" required></label>
+            <label>Last service month <span class="optional">Optional</span><input type="month" name="periodEnd" min="1900-01" max="9999-12"></label>
+            <p class="hint full">Leave the last month empty for one invoice. A range creates one PDF page per month.</p>
             <label>Invoice date<input type="date" name="issueDate" min="1900-01-01" max="9999-12-31" required></label>
             <button type="button" id="month-end" class="text-button full">Use the last day of the service month ↗</button>
             <label>Payment terms<select name="terms"><option value="end_of_month">End of month</option><option value="30_days">Within 30 days</option><option value="on_receipt">Due on receipt</option><option value="custom">Custom date</option></select></label>
             <label>Due date<input type="date" name="dueDate" min="1900-01-01" max="9999-12-31" required readonly></label>
+            <label class="check-label full"><input type="checkbox" name="paid"> Mark invoice(s) as paid in full</label>
           </div>
         </fieldset>
 
@@ -81,7 +84,7 @@
     <section id="preview" class="preview-pane" aria-label="Invoice preview">
       <div class="preview-toolbar app-only"><div><span class="live-dot"></span>Live preview</div><span>A4 · <span id="zoom">100%</span></span></div>
       <div class="paper-stage"><div id="paper-frame"><article id="invoice" class="invoice-paper" aria-label="Your invoice"></article></div></div>
-      <p class="print-hint app-only">Ready when you are. Choose <strong>Save as PDF</strong> in the print dialog.<br>For a clean PDF, turn off browser headers and footers.</p>
+      <p class="print-hint app-only">A month range prints as one multi-page PDF. Choose <strong>Save as PDF</strong> in the print dialog.<br>For a clean PDF, turn off browser headers and footers.</p>
     </section>
   </main>
   <script type="module" src="./app.mjs"></script>
