@@ -95,9 +95,9 @@ Ardından Vercel'de:
 5. Ek bir build veya install komutu tanımlama.
 6. **Deploy** düğmesine bas.
 
-`vercel.json`, statik web dosyalarını `web/` klasöründen yayınlar. Vercel,
-`api/invoice.go` dosyasını otomatik olarak Go Function şeklinde derler ve şu
-endpoint'i oluşturur:
+`vercel.json`, Vercel'in Go Framework Preset'ini seçer. Kök dizindeki `main.go`
+web dosyalarını binary içine gömer, web arayüzünü yayınlar ve şu endpoint'i
+oluşturur:
 
 ```text
 POST /api/invoice
@@ -174,8 +174,7 @@ go run ./cmd/invoice \
 
 ```text
 invoice/
-├── api/
-│   └── invoice.go          # Vercel Go Function
+├── main.go                 # Vercel Go sunucusu ve gömülü web dosyaları
 ├── cmd/
 │   ├── invoice/            # PDF oluşturan CLI
 │   └── server/             # Yerel web sunucusu
@@ -183,6 +182,7 @@ invoice/
 │   └── config.example.yaml # CLI için örnek yapılandırma
 ├── internal/
 │   ├── invoice/            # Doğrulama ve hesaplamalar
+│   ├── httpapi/            # Web formu için Go API
 │   └── pdf/                # Chrome ile PDF üretimi
 ├── templates/
 │   └── invoice.html        # CLI fatura şablonu
