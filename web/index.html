@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Create a clean invoice in your browser. Live preview, month-end payment terms, and print-ready PDFs. Your invoice details stay on your device.">
+  <meta name="referrer" content="no-referrer">
+  <title>Invoice — Simple, private invoicing</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar app-only">
+    <a class="brand" href="./" aria-label="Invoice home"><span class="brand-mark" aria-hidden="true">i.</span>invoice<span class="brand-tag">BROWSER EDITION</span></a>
+    <div class="top-actions">
+      <button type="button" id="example" class="button secondary">Try an example</button>
+      <button type="submit" form="editor" id="print" class="button primary" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m-4-4 4 4 4-4M4 13v4h12v-4"/></svg>Save as PDF</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="editor-pane app-only" aria-labelledby="editor-heading">
+      <div class="intro"><p class="eyebrow">LESS ADMIN. MORE DOING.</p><h1 id="editor-heading">Your next invoice.</h1><p>All the details, beautifully put together.</p></div>
+      <div class="privacy"><span class="privacy-dot"></span>Your invoice details stay in your browser.</div>
+      <noscript><p class="notice error">Enable JavaScript to create an invoice. No details are sent to a server.</p></noscript>
+      <form id="editor" autocomplete="off">
+        <fieldset>
+          <legend><span class="step">01</span>Invoice details</legend>
+          <div class="field-grid">
+            <label class="full">Invoice number <span class="input-action"><input name="number" required maxlength="60" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,59}" aria-describedby="number-hint"><button type="button" id="next-number" title="Choose the next invoice number">Next ↗</button></span></label>
+            <p id="number-hint" class="hint full">Invoice numbers are remembered on this browser.</p>
+            <label>Service month<input type="month" name="period" min="1900-01" max="9999-12" required></label>
+            <label>Invoice date<input type="date" name="issueDate" min="1900-01-01" max="9999-12-31" required></label>
+            <button type="button" id="month-end" class="text-button full">Use the last day of the service month ↗</button>
+            <label>Payment terms<select name="terms"><option value="end_of_month">End of month</option><option value="30_days">Within 30 days</option><option value="on_receipt">Due on receipt</option><option value="custom">Custom date</option></select></label>
+            <label>Due date<input type="date" name="dueDate" min="1900-01-01" max="9999-12-31" required readonly></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">02</span>From &amp; to</legend>
+          <div class="party-label"><span class="small-avatar">Y</span>Your details</div>
+          <label>Name or company<input name="sellerName" placeholder="Your name or company" maxlength="160" required autocomplete="organization"></label>
+          <label>Address<textarea name="sellerAddress" placeholder="Street, city, country" rows="2" maxlength="500" required autocomplete="street-address"></textarea></label>
+          <details class="extra-fields"><summary>Contact &amp; tax details <span>Optional</span></summary><div class="field-grid">
+            <label class="full">Email<input type="email" name="sellerEmail" placeholder="you@example.com" maxlength="160"></label>
+            <label>Phone<input type="tel" name="sellerPhone" maxlength="60"></label>
+            <label>VAT / tax ID<input name="sellerVAT" maxlength="80"></label>
+          </div></details>
+          <div class="party-label client-label"><span class="small-avatar">C</span>Client details</div>
+          <label>Name or company<input name="customerName" placeholder="Client name or company" maxlength="160" required></label>
+          <label>Address<textarea name="customerAddress" placeholder="Street, city, country" rows="2" maxlength="500" required></textarea></label>
+          <details class="extra-fields"><summary>Contact &amp; tax details <span>Optional</span></summary><div class="field-grid">
+            <label class="full">Email<input type="email" name="customerEmail" placeholder="client@example.com" maxlength="160"></label>
+            <label>Phone<input type="tel" name="customerPhone" maxlength="60"></label>
+            <label>VAT / tax ID<input name="customerVAT" maxlength="80"></label>
+          </div></details>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">03</span>What are you billing for?</legend>
+          <div id="items"></div>
+          <button type="button" id="add-item" class="add-button">＋ Add an item</button>
+          <div class="field-grid money-settings">
+            <label>Currency<select name="currency"><option>CHF</option><option>EUR</option><option>USD</option><option>GBP</option><option>TRY</option></select></label>
+            <label>Tax rate (%)<input name="tax" type="text" inputmode="decimal" pattern="[0-9]{1,3}([.,][0-9]{1,2})?" value="0" required></label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend><span class="step">04</span>The finishing touches</legend>
+          <label>Payment details <span class="optional">Optional</span><textarea name="paymentDetails" rows="3" maxlength="2000" placeholder="Bank name, account holder, IBAN…"></textarea></label>
+          <label>Notes <span class="optional">Optional</span><textarea name="notes" rows="3" maxlength="2000" placeholder="Thank you for your business."></textarea></label>
+        </fieldset>
+        <div class="draft-actions"><button type="button" id="save-draft" class="button secondary">Save draft on this device</button><button type="button" id="clear-draft" class="text-button">Forget saved draft</button></div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </form>
+      <p class="editor-footer">Made for independent work. No account needed.</p>
+    </section>
+
+    <section id="preview" class="preview-pane" aria-label="Invoice preview">
+      <div class="preview-toolbar app-only"><div><span class="live-dot"></span>Live preview</div><span>A4 · <span id="zoom">100%</span></span></div>
+      <div class="paper-stage"><div id="paper-frame"><article id="invoice" class="invoice-paper" aria-label="Your invoice"></article></div></div>
+      <p class="print-hint app-only">Ready when you are. Choose <strong>Save as PDF</strong> in the print dialog.<br>For a clean PDF, turn off browser headers and footers.</p>
+    </section>
+  </main>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

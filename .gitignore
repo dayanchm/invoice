@@ -1,0 +1,11 @@
+.DS_Store
+/bin/
+
+# Keep local configuration private.
+/data/*
+!/data/.gitkeep
+
+# Generated invoices contain customer and payment information.
+/invoices/**
+!/invoices/**/
+!/invoices/**/.gitkeep

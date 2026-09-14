@@ -1,0 +1,31 @@
+# Copy this file to config.yaml and replace the example values.
+# config.yaml is ignored by Git.
+seller:
+  name: "Your name or company"
+  address: "Your full address"
+  vat: ""
+  phone: ""
+  email: "you@example.com"
+
+customer:
+  name: "Example Client"
+  address: "Example Street 1, Genève"
+  vat: ""
+  phone: ""
+  email: "billing@example.com"
+
+currency: CHF
+# Payment is due on the last day of the invoice month.
+payment_terms: end_of_month
+# Set your applicable tax rate: 100 basis points = 1%.
+tax_basis_points: 0
+
+items:
+  - description: "Monthly software development services"
+    quantity: 1
+    # Enter your actual price: 125000 = 1250.00 CHF. Zero is not accepted.
+    unit_price_cents: 0
+
+# Optional bank/payment information. Use YAML | for multiple lines.
+payment_details: ""
+notes: ""

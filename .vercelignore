@@ -1,0 +1,10 @@
+data/
+invoices/
+internal/
+cmd/
+templates/
+tests/
+.git/
+.agents/
+.codex/
+**/.DS_Store

@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Number}} — {{.Seller.Name}}</title>
+  <style>
+    @page { size: A4; margin: 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #252525;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9.5pt;
+      line-height: 1.55;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    main { max-width: 178mm; margin: 0 auto; }
+    header { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; align-items: start; }
+    h1 { margin: 0; font-size: 32pt; line-height: 1.1; font-weight: 400; letter-spacing: .5px; }
+    h2 { margin: 0 0 2mm; color: #666; font-size: 9pt; font-weight: 400; }
+    p { margin: 0; overflow-wrap: anywhere; }
+    .seller-name { margin-bottom: 2mm; font-size: 12pt; font-weight: 700; }
+    .seller-contact { color: #555; }
+    .right { text-align: right; }
+    .number { margin-top: 2mm; color: #555; font-size: 10pt; }
+    .balance-heading { margin-top: 7mm; font-size: 9pt; font-weight: 700; }
+    .balance-amount { margin-top: 1mm; font-size: 16pt; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .billing { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; align-items: end; margin: 13mm 0 9mm; }
+    .customer-name { font-size: 10pt; font-weight: 700; }
+    .address, .multiline { white-space: pre-line; }
+    .metadata { display: grid; grid-template-columns: auto auto; column-gap: 6mm; row-gap: 2.5mm; margin: 0; }
+    .metadata dt { color: #666; text-align: right; }
+    .metadata dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .column-number { width: 6%; }
+    .column-description { width: 46%; }
+    .column-quantity { width: 10%; }
+    .column-rate { width: 18%; }
+    .column-amount { width: 20%; }
+    thead { display: table-header-group; }
+    thead th { padding: 2.5mm 3mm; color: #fff; background: #363636; font-size: 9pt; font-weight: 400; text-align: left; }
+    tbody { counter-reset: item; }
+    tbody tr { counter-increment: item; }
+    tbody td, tbody th { padding: 4mm 3mm; border-bottom: 1px solid #e2e2e2; vertical-align: top; overflow-wrap: anywhere; }
+    tbody th { color: #666; font-weight: 400; }
+    .item-number::before { content: counter(item); }
+    .description { white-space: pre-line; }
+    tr { break-inside: avoid; }
+    .center { text-align: center; }
+    .numeric { text-align: right; font-variant-numeric: tabular-nums; }
+    .totals { width: 48%; margin: 4mm 0 0 auto; break-inside: avoid; }
+    .totals p { display: grid; grid-template-columns: 1fr auto; gap: 5mm; padding: 2mm 3mm; text-align: right; font-variant-numeric: tabular-nums; }
+    .totals .total { font-weight: 700; }
+    .totals .balance-due { margin-top: 2mm; padding-top: 3mm; padding-bottom: 3mm; background: #f1f1f1; font-weight: 700; }
+    .closing { margin-top: 16mm; }
+    .details { margin-top: 7mm; break-inside: avoid; }
+    .details h2 { margin-bottom: 1mm; }
+    footer { margin-top: 8mm; color: #777; font-size: 8pt; }
+    @media screen {
+      body { padding: 24px; background: #eee; }
+      main { max-width: 210mm; min-height: 297mm; padding: 16mm; background: #fff; box-shadow: 0 2px 12px #00000012; }
+    }
+    @media screen and (max-width: 600px) {
+      body { padding: 8px; }
+      main { min-height: auto; padding: 20px; }
+      header, .billing { grid-template-columns: 1fr; gap: 24px; }
+      header .right { text-align: left; }
+      .metadata { grid-template-columns: 1fr 1fr; }
+      .metadata dt { text-align: left; }
+      .totals { width: 100%; }
+      thead th, tbody td, tbody th { padding-left: 5px; padding-right: 5px; font-size: 8pt; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <p class="seller-name">{{.Seller.Name}}</p>
+      <div class="seller-contact">
+        <p class="address">{{.Seller.Address}}</p>
+        {{if .Seller.VAT}}<p>VAT: {{.Seller.VAT}}</p>{{end}}
+        {{if .Seller.Phone}}<p>{{.Seller.Phone}}</p>{{end}}
+        {{if .Seller.Email}}<p>{{.Seller.Email}}</p>{{end}}
+      </div>
+    </div>
+    <div class="right">
+      <h1>INVOICE</h1>
+      <p class="number"># {{.Number}}</p>
+      <p class="balance-heading">Balance Due</p>
+      <p class="balance-amount">{{money .TotalCents}} {{.Currency}}</p>
+    </div>
+  </header>
+
+  <section class="billing">
+    <div>
+      <h2>Bill To</h2>
+      <p class="customer-name">{{.Customer.Name}}</p>
+      <p class="address">{{.Customer.Address}}</p>
+      {{if .Customer.VAT}}<p>VAT: {{.Customer.VAT}}</p>{{end}}
+      {{if .Customer.Phone}}<p>{{.Customer.Phone}}</p>{{end}}
+      {{if .Customer.Email}}<p>{{.Customer.Email}}</p>{{end}}
+    </div>
+    <dl class="metadata">
+      <dt>Invoice Date :</dt><dd>{{date .IssueDate}}</dd>
+      <dt>Due Date :</dt><dd>{{date .DueDate}}</dd>
+      <dt>Service Period :</dt><dd>{{.Period}}</dd>
+    </dl>
+  </section>
+
+  <table>
+    <colgroup>
+      <col class="column-number"><col class="column-description"><col class="column-quantity"><col class="column-rate"><col class="column-amount">
+    </colgroup>
+    <thead>
+      <tr>
+        <th scope="col" class="center">#</th><th scope="col">Item &amp; Description</th>
+        <th scope="col" class="numeric">Qty</th><th scope="col" class="numeric">Rate</th><th scope="col" class="numeric">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Items}}
+      <tr>
+        <th scope="row" class="item-number center"></th>
+        <td class="description">{{.Description}}</td><td class="numeric">{{.Quantity}}</td>
+        <td class="numeric">{{money .UnitPriceCents}}</td><td class="numeric">{{money .TotalCents}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+
+  <section class="totals">
+    <p><span>Sub Total</span><span>{{money .SubtotalCents}} {{.Currency}}</span></p>
+    {{if .TaxBasisPoints}}<p><span>Tax ({{money .TaxBasisPoints}}%)</span><span>{{money .TaxCents}} {{.Currency}}</span></p>{{end}}
+    <p class="total"><span>Total</span><span>{{money .TotalCents}} {{.Currency}}</span></p>
+    <p class="balance-due"><span>Balance Due</span><span>{{money .TotalCents}} {{.Currency}}</span></p>
+  </section>
+
+  <div class="closing">
+    <section class="details">
+      <h2>Notes</h2>
+      <p class="multiline">{{if .Notes}}{{.Notes}}{{else}}Thank you for your business.{{end}}</p>
+    </section>
+    {{if .PaymentDetails}}<section class="details"><h2>Payment Details</h2><p class="multiline">{{.PaymentDetails}}</p></section>{{end}}
+  </div>
+  <footer>Payment reference: {{.Number}}</footer>
+</main>
+</body>
+</html>
