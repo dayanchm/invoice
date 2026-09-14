@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"invoice/internal/invoice"
-	"invoice/internal/pdf"
+	"github.com/dayanchm/invoice/internal/invoice"
+	"github.com/dayanchm/invoice/internal/pdf"
 )
 
 func main() {

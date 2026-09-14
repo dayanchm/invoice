@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	handler "invoice/api"
+	handler "github.com/dayanchm/invoice/api"
 )
 
 func main() {

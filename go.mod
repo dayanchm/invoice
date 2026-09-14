@@ -1,4 +1,4 @@
-module invoice
+module github.com/dayanchm/invoice
 
 go 1.25.0
 

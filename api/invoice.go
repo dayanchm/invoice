@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	invoicecore "invoice/internal/invoice"
+	invoicecore "github.com/dayanchm/invoice/internal/invoice"
 )
 
 const maxRequestBytes = 1 << 20

@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"invoice/internal/invoice"
-	"invoice/internal/pdf"
+	"github.com/dayanchm/invoice/internal/invoice"
+	"github.com/dayanchm/invoice/internal/pdf"
 )
 
 func TestRunRejectsIncompleteConfigBeforeReservation(t *testing.T) {
